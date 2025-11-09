@@ -373,9 +373,10 @@
     console.log('condicon', !s3Response)
       if (!s3Response || !s3Response2) {
         throw new Error('Error al obtener URLs de S3');
-      }
+
+    }
       const { uploadUrl, publicUrl } = await s3Response.json();
-      const { uploadUrl: uploadUrl2, publicUrl2 } = await s3Response2.json();
+      const { uploadUrl: uploadUrl2, publicUrl: publicUrl2 } = await s3Response2.json();
       console.log('url', uploadUrl, uploadUrl2)
 
       urls=[uploadUrl, uploadUrl2];
