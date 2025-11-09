@@ -155,14 +155,14 @@
 <script>
   // ==================== CONFIGURACIÓN ====================
   // CAMBIA ESTAS URLs POR TU BACKEND Y SUPABASE
-//   const BACKEND_URL = 'https://qb2dfea1va.execute-api.us-east-2.amazonaws.com/v1';
+const BACKEND_URL = window.env.PUBLIC_BACKEND_URL;
+const SUPABASE_URL = window.env.PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = window.env.PUBLIC_SUPABASE_ANON_KEY;
+
   const GET_S3_URLS = `${BACKEND_URL}/api/s3/upload-url`;
   const REGISTER_URL = `${BACKEND_URL}/api/auth/register-driverform`;
   
-  // Configuración de Supabase
-//   const SUPABASE_URL = 'https://koizypxfowhfssjgpxyx.supabase.co'; // CAMBIA ESTO
-//   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtvaXp5cHhmb3doZnNzamdweHl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI2OTc4OTUsImV4cCI6MjA3ODI3Mzg5NX0.iKK8VQ0Cxk1ALNf1cXQRVoxS476qCUv2F4AUgPP2w5s"
-  const SUPABASE_TABLE = 'correosExternos'; // Nombre de tu tabla
+const SUPABASE_TABLE = 'correosExternos'; // Nombre de tu tabla
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   // ==================== ELEMENTOS DOM ====================
   const form = document.getElementById('registroForm');
