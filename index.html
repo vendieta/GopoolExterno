@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Registro de Conductor</title>
+  <style>
+    * { box-sizing: border-box; font-family: Arial, sans-serif; }
+    body { background: #f4f7fa; display: flex; justify-content: center; padding: 20px; }
+    .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 550px; width: 100%; }
+    h1 { text-align: center; color: #333; margin-bottom: 20px; }
+    label { display: block; margin-top: 15px; font-weight: bold; color: #555; }
+    input, input[type="file"] { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; }
+    input[type="file"] { padding: 8px 0; }
+    button { margin-top: 25px; width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; transition: all 0.3s; }
+    button:hover:not(:disabled) { background: #0056b3; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    .preview { margin-top: 10px; text-align: center; }
+    .preview img { max-width: 180px; max-height: 180px; border-radius: 8px; border: 1px solid #ddd; margin: 5px; }
+    .error { color: red; font-size: 14px; margin-top: 5px; }
+    .success { color: green; font-size: 14px; margin-top: 10px; text-align: center; }
+    .info { color: #007bff; font-size: 14px; margin-top: 10px; text-align: center; }
+
+    /* Modal */
+    .modal {
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000;
+    }
+    .modal-content {
+      background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 400px; text-align: center;
+    }
+    .modal-buttons {
+      margin-top: 20px; display: flex; gap: 10px; justify-content: center;
+    }
+    .modal-buttons button {
+      width: auto; padding: 10px 20px; font-size: 14px;
+    }
+    .btn-cancel { background: #6c757d; }
+    .btn-cancel:hover { background: #5a6268; }
+
+    /* Progress Steps */
+    .progress-steps {
+      margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; display: none;
+    }
+    .progress-steps.active { display: block; }
+    .step {
+      display: flex; align-items: center; padding: 8px 0; font-size: 14px; color: #666;
+    }
+    .step.completed { color: #28a745; }
+    .step.active { color: #007bff; font-weight: bold; }
+    .step.error { color: #dc3545; }
+    .step-icon {
+      width: 20px; height: 20px; margin-right: 10px; border-radius: 50%;
+      border: 2px solid currentColor; display: flex; align-items: center; justify-content: center;
+      font-size: 12px;
+    }
+    .step.completed .step-icon { background: #28a745; color: white; border-color: #28a745; }
+    .step.active .step-icon { border-color: #007bff; }
+    .step.error .step-icon { background: #dc3545; color: white; border-color: #dc3545; }
+
+    /* Spinner */
+    .spinner {
+      display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(0,0,0,0.1);
+      border-top-color: currentColor; border-radius: 50%; animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Registro de Conductor</h1>
+
+  <form id="registroForm">
+    <!-- Datos básicos -->
+    <label>Email</label>
+    <input type="email" id="email" required />
+
+    <label>Contraseña</label>
+    <input type="password" id="password" required />
+
+    <label>Nombre</label>
+    <input type="text" id="nombre" required />
+
+    <label>Nombre de Usuario</label>
+    <input type="text" id="usuario" required />
+
+    <label>Apellido</label>
+    <input type="text" id="lastname" required />
+
+    <label>Número de Cédula</label>
+    <input type="text" id="nummatricula" required />
+
+    <label>Fecha de Nacimiento</label>
+    <input type="date" id="fechanacimiento" required />
+
+    <label>Número de Licencia</label>
+    <input type="text" id="numerolicencia" />
+
+    <label>Número de Teléfono</label>
+    <input type="tel" id="telefono" placeholder="Ej: +58412..." required />
+
+    <!-- Fotos -->
+    <label>Foto de Perfil</label>
+    <input type="file" id="fotomatricula" accept="image/*" />
+    <div class="preview" id="previewMatricula"></div>
+
+    <label>Foto de Licencia</label>
+    <input type="file" id="fotolicencia" accept="image/*" />
+    <div class="preview" id="previewLicencia"></div>
+
+    <button type="submit" id="submitBtn">Registrarse</button>
+    <div id="mensaje"></div>
+
+    <!-- Progress Steps -->
+    <div class="progress-steps" id="progressSteps">
+      <div class="step" id="step1">
+        <div class="step-icon"></div>
+        <span>Verificando usuario en Supabase...</span>
+      </div>
+      <div class="step" id="step2">
+        <div class="step-icon"></div>
+        <span>Obteniendo URLs de S3...</span>
+      </div>
+      <div class="step" id="step3">
+        <div class="step-icon"></div>
+        <span>Subiendo foto de perfil...</span>
+      </div>
+      <div class="step" id="step4">
+        <div class="step-icon"></div>
+        <span>Subiendo foto de licencia...</span>
+      </div>
+      <div class="step" id="step5">
+        <div class="step-icon"></div>
+        <span>Registrando en base de datos principal...</span>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Modal de confirmación -->
+<div class="modal" id="confirmModal">
+  <div class="modal-content">
+    <h3>Confirmar Registro</h3>
+    <p>¿Estás seguro de registrarte? Se verificará tu usuario y subirán las imágenes a S3.</p>
+    <div class="modal-buttons">
+      <button class="btn-cancel" id="cancelBtn">Cancelar</button>
+      <button id="confirmBtn">Sí, continuar</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+  // ==================== CONFIGURACIÓN ====================
+  // CAMBIA ESTAS URLs POR TU BACKEND Y SUPABASE
+  const BACKEND_URL = 'https://qb2dfea1va.execute-api.us-east-2.amazonaws.com/v1';
+  const GET_S3_URLS = `${BACKEND_URL}/api/s3/upload-url`;
+  const REGISTER_URL = `${BACKEND_URL}/api/auth/register-driverform`;
+  
+  // Configuración de Supabase
+  const SUPABASE_URL = 'https://koizypxfowhfssjgpxyx.supabase.co'; // CAMBIA ESTO
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtvaXp5cHhmb3doZnNzamdweHl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI2OTc4OTUsImV4cCI6MjA3ODI3Mzg5NX0.iKK8VQ0Cxk1ALNf1cXQRVoxS476qCUv2F4AUgPP2w5s"
+  const SUPABASE_TABLE = 'correosExternos'; // Nombre de tu tabla
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  // ==================== ELEMENTOS DOM ====================
+  const form = document.getElementById('registroForm');
+  const modal = document.getElementById('confirmModal');
+  const confirmBtn = document.getElementById('confirmBtn');
+  const cancelBtn = document.getElementById('cancelBtn');
+  const submitBtn = document.getElementById('submitBtn');
+  const mensaje = document.getElementById('mensaje');
+  const progressSteps = document.getElementById('progressSteps');
+  const previewMatricula = document.getElementById('previewMatricula');
+  const previewLicencia = document.getElementById('previewLicencia');
+
+  let dataUrl = null;   // Foto de perfil
+  let dataUrl2 = null;  // Foto de licencia
+  let formData = null;  // Datos del formulario
+
+  // ==================== PREVISUALIZACIÓN ====================
+  document.getElementById('fotomatricula').addEventListener('change', (e) => {
+    handleFile(e, (url) => {
+      dataUrl = { file: e.target.files[0], url };
+      previewMatricula.innerHTML = `<img src="${url}" />`;
+    });
+  });
+
+  document.getElementById('fotolicencia').addEventListener('change', (e) => {
+    handleFile(e, (url) => {
+      dataUrl2 = { file: e.target.files[0], url };
+      previewLicencia.innerHTML = `<img src="${url}" />`;
+    });
+  });
+
+  function handleFile(e, callback) {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (ev) => callback(ev.target.result);
+      reader.readAsDataURL(file);
+    } else {
+      callback(null);
+    }
+  }
+
+  function numberCheck(input) {
+    return input.replace(/[^0-9+]/g, '');
+  }
+
+  // ==================== MODAL ====================
+  function showModal() {
+    modal.style.display = 'flex';
+  }
+
+  function hideModal() {
+    modal.style.display = 'none';
+  }
+
+  cancelBtn.addEventListener('click', hideModal);
+
+  // ==================== PROGRESS STEPS ====================
+  function updateStep(stepId, status) {
+    const step = document.getElementById(stepId);
+    step.className = `step ${status}`;
+    
+    if (status === 'active') {
+      step.querySelector('.step-icon').innerHTML = '<div class="spinner"></div>';
+    } else if (status === 'completed') {
+      step.querySelector('.step-icon').innerHTML = '✓';
+    } else if (status === 'error') {
+      step.querySelector('.step-icon').innerHTML = '✕';
+    }
+  }
+
+  function resetSteps() {
+    ['step1', 'step2', 'step3', 'step4', 'step5'].forEach(id => {
+      const step = document.getElementById(id);
+      step.className = 'step';
+      step.querySelector('.step-icon').innerHTML = '';
+    });
+    progressSteps.classList.remove('active');
+  }
+
+  // ==================== SUPABASE ====================
+  async function checkUserInSupabase(email) {
+    try {
+     const {data: response, error } = await supabaseClient
+        .from(SUPABASE_TABLE)
+        .select('*')
+        .or(`email.eq.${email}`);
+    console.log(response)
+
+
+
+      if (!response[0] || error) {
+        throw new Error('Error al verificar en Supabase');
+      }
+
+      const data = await response[0];
+      console.log('data', data)
+      return data ? true : false; // True si existe
+    } catch (error) {
+      console.error('Error en Supabase:', error);
+      throw error;
+    }
+  }
+
+  // ==================== SUBIDA DE IMÁGENES ====================
+  async function uploadImageToS3(url, file, stepId) {
+    updateStep(stepId, 'active');
+    
+    try {
+      const response = await fetch(url, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type }
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al subir imagen');
+      }
+
+      updateStep(stepId, 'completed');
+      return true;
+    } catch (error) {
+      updateStep(stepId, 'error');
+      throw error;
+    }
+  }
+
+  // ==================== VALIDACIÓN FORMULARIO ====================
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    mensaje.innerHTML = '';
+
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value.trim();
+    const name = document.getElementById('nombre').value.trim();
+    const userName = document.getElementById('usuario').value.trim();
+    const lastName = document.getElementById('lastname').value.trim();
+    const numMatricula = document.getElementById('nummatricula').value.trim();
+    const fechNa = document.getElementById('fechanacimiento').value.trim();
+    const numLicencia = document.getElementById('numerolicencia').value.trim();
+    const number = numberCheck(document.getElementById('telefono').value);
+
+    if (!email || !password || !name || !userName || !lastName || !numMatricula || !fechNa || !number) {
+      mensaje.innerHTML = '<p class="error">Todos los campos obligatorios son requeridos.</p>';
+      return;
+    }
+
+    if (!dataUrl?.file || !dataUrl2?.file) {
+      mensaje.innerHTML = '<p class="error">Debes subir ambas imágenes.</p>';
+      return;
+    }
+
+    // Guardar datos
+    formData = {
+      email, password, name, userName, lastName, numMatricula, fechNa, numLicencia, number
+    };
+
+    showModal();
+  });
+
+  // ==================== PROCESO DE REGISTRO ====================
+  confirmBtn.addEventListener('click', async () => {
+    const name = document.getElementById('nombre').value.trim();
+    const lastName = document.getElementById('lastname').value.trim();
+    const numMatricula = document.getElementById('nummatricula').value.trim();
+    hideModal();
+    submitBtn.disabled = true;
+    mensaje.innerHTML = '';
+    progressSteps.classList.add('active');
+    resetSteps();
+
+    try {
+      // PASO 1: Verificar en Supabase
+      updateStep('step1', 'active');
+      const existeEnSupabase = await checkUserInSupabase(formData.email);
+      
+      console.log('EXISTE', existeEnSupabase)
+      if (!existeEnSupabase) {
+        updateStep('step1', 'error');
+        mensaje.innerHTML = '<p class="error">❌ Usuario no autorizado. Debes estar registrado en Supabase primero.</p>';
+        submitBtn.disabled = false;
+        return;
+      }
+      
+      updateStep('step1', 'completed');
+      await new Promise(resolve => setTimeout(resolve, 500)); // Pausa visual
+
+      // PASO 2: Obtener URLs de S3
+      updateStep('step2', 'active');
+      const s3Response = await fetch(GET_S3_URLS, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+             fileName: `ftUser/${name}_${lastName}-${numMatricula}.jpg`, fileType: dataUrl.file.type
+            })
+        });
+      const s3Response2 = await fetch(GET_S3_URLS, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            //  fileName: `ftUser/${name}_${lastName}-${numMatricula}.jpg`, fileType: dataUrl.file.type
+            fileName: `LICENCIAS/{name}_${lastName}-${numMatricula}_${Date.now()}.jpg`, fileType: dataUrl2.file.type 
+            }
+            )
+        });
+
+      console.log('s3', s3Response)
+    console.log('condicon', !s3Response)
+      if (!s3Response || !s3Response2) {
+        throw new Error('Error al obtener URLs de S3');
+      }
+      const { uploadUrl, publicUrl } = await s3Response.json();
+      const { uploadUrl: uploadUrl2, publicUrl2 } = await s3Response2.json();
+      console.log('url', uploadUrl, uploadUrl2)
+
+      urls=[uploadUrl, uploadUrl2];
+      publicUrls=[publicUrl, publicUrl2]
+      if (!urls || urls.length !== 2) {
+        throw new Error('URLs de S3 inválidas');
+      }
+
+      updateStep('step2', 'completed');
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // PASO 3: Subir foto de perfil
+      await uploadImageToS3(urls[0], dataUrl.file, 'step3');
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // PASO 4: Subir foto de licencia
+      await uploadImageToS3(urls[1], dataUrl2.file, 'step4');
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // PASO 5: Registro en base de datos principal
+      updateStep('step5', 'active');
+      const finalPayload = {
+        email: formData.email,
+        password: formData.password,
+        metadata: {
+          nombre: formData.name,
+          usuario: formData.userName,
+          lastname: formData.lastName,
+          nummatricula: formData.numMatricula,
+          fechanacimiento: formData.fechNa,
+          fotomatricula: publicUrls[0],
+          fotodriver: "null",
+          fotolicencia: publicUrls[1],
+          numeroLicencia: formData.numLicencia || null,
+          numeroTelefono: formData.number
+        }
+      };
+
+      console.log('aaaaa', finalPayload)
+
+      const registerResponse = await fetch(REGISTER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(finalPayload)
+      });
+
+      if (!registerResponse.ok) {
+        const errorData = await registerResponse.json();
+        throw new Error(errorData.message || 'Error al registrar');
+      }
+
+      updateStep('step5', 'completed');
+      mensaje.innerHTML = '<p class="success">✅ ¡Registro exitoso! Usuario verificado y datos guardados.</p>';
+      
+      // Limpiar formulario
+      form.reset();
+      previewMatricula.innerHTML = '';
+      previewLicencia.innerHTML = '';
+      dataUrl = dataUrl2 = null;
+      formData = null;
+
+    } catch (error) {
+      console.error('Error en el proceso:', error);
+      mensaje.innerHTML = `<p class="error">❌ Error: ${error.message}</p>`;
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+</script>
+
+</body>
+</html>
