@@ -380,6 +380,7 @@
 
       urls=[uploadUrl, uploadUrl2];
       publicUrls=[publicUrl, publicUrl2]
+      console.log('eeeee', publicUrls)
       if (!urls || urls.length !== 2) {
         throw new Error('URLs de S3 inválidas');
       }
@@ -421,7 +422,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: finalPayload
       });
-      
+
       if (!registerResponse.ok) {
         const errorData = await registerResponse.json();
         throw new Error(errorData.message || 'Error al registrar');
