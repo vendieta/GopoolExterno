@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Registro de Conductor</title>
+    <link rel="icon" type="image/png" href="./logo.png">
   <style>
     * { box-sizing: border-box; font-family: Arial, sans-serif; }
     body { background: #f4f7fa; display: flex; justify-content: center; padding: 20px; }
@@ -292,6 +293,7 @@
 
   // ==================== VALIDACIÓN FORMULARIO ====================
   // ==================== VALIDACIÓN FORMULARIO ====================
+// ==================== VALIDACIÓN FORMULARIO ====================
 form.addEventListener('submit', (e) => {
   e.preventDefault();
   mensaje.innerHTML = '';
@@ -304,7 +306,17 @@ form.addEventListener('submit', (e) => {
   const numMatricula = document.getElementById('nummatricula').value.trim();
   const fechNa = document.getElementById('fechanacimiento').value.trim();
   const numLicencia = document.getElementById('numerolicencia').value.trim();
-  const number = numberCheck(document.getElementById('telefono').value);
+  let number = document.getElementById('telefono').value.trim();
+
+  // --- Limpieza de formato de teléfono ---
+  number = number.replace(/\s|-/g, ''); // quita espacios y guiones
+
+  // --- Normalización del número con +593 ---
+  if (number.startsWith('09')) {
+    number = '+593' + number.substring(1); // reemplaza el 0 inicial por +593
+  } else if (!number.startsWith('+593')) {
+    number = '+593' + number; // agrega el prefijo si no lo tiene
+  }
 
   // --- Validación de campos obligatorios ---
   if (!email || !password || !name || !userName || !lastName || !numMatricula || !fechNa || !number) {
@@ -330,9 +342,17 @@ form.addEventListener('submit', (e) => {
     return;
   }
 
-  // Guardar datos
+  // Guardar datos (ya con número corregido)
   formData = {
-    email, password, name, userName, lastName, numMatricula, fechNa, numLicencia, number
+    email,
+    password,
+    name,
+    userName,
+    lastName,
+    numMatricula,
+    fechNa,
+    numLicencia,
+    number // siempre en formato +593...
   };
 
   showModal();
