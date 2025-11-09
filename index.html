@@ -291,37 +291,52 @@
   }
 
   // ==================== VALIDACIÓN FORMULARIO ====================
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    mensaje.innerHTML = '';
+  // ==================== VALIDACIÓN FORMULARIO ====================
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  mensaje.innerHTML = '';
 
-    const email = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value.trim();
-    const name = document.getElementById('nombre').value.trim();
-    const userName = document.getElementById('usuario').value.trim();
-    const lastName = document.getElementById('lastname').value.trim();
-    const numMatricula = document.getElementById('nummatricula').value.trim();
-    const fechNa = document.getElementById('fechanacimiento').value.trim();
-    const numLicencia = document.getElementById('numerolicencia').value.trim();
-    const number = numberCheck(document.getElementById('telefono').value);
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value.trim();
+  const name = document.getElementById('nombre').value.trim();
+  const userName = document.getElementById('usuario').value.trim();
+  const lastName = document.getElementById('lastname').value.trim();
+  const numMatricula = document.getElementById('nummatricula').value.trim();
+  const fechNa = document.getElementById('fechanacimiento').value.trim();
+  const numLicencia = document.getElementById('numerolicencia').value.trim();
+  const number = numberCheck(document.getElementById('telefono').value);
 
-    if (!email || !password || !name || !userName || !lastName || !numMatricula || !fechNa || !number) {
-      mensaje.innerHTML = '<p class="error">Todos los campos obligatorios son requeridos.</p>';
-      return;
-    }
+  // --- Validación de campos obligatorios ---
+  if (!email || !password || !name || !userName || !lastName || !numMatricula || !fechNa || !number) {
+    mensaje.innerHTML = '<p class="error">Todos los campos obligatorios son requeridos.</p>';
+    return;
+  }
 
-    if (!dataUrl?.file || !dataUrl2?.file) {
-      mensaje.innerHTML = '<p class="error">Debes subir ambas imágenes.</p>';
-      return;
-    }
+  // --- 🔐 Validación de contraseña ---
+  const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{7,}$/;
+  // al menos una letra, un número y mínimo 7 caracteres
 
-    // Guardar datos
-    formData = {
-      email, password, name, userName, lastName, numMatricula, fechNa, numLicencia, number
-    };
+  if (!passwordRegex.test(password)) {
+    mensaje.innerHTML = `
+      <p class="error">
+        La contraseña debe tener al menos 7 caracteres, incluir letras y números.
+      </p>`;
+    return;
+  }
 
-    showModal();
-  });
+  // --- Validación de imágenes ---
+  if (!dataUrl?.file || !dataUrl2?.file) {
+    mensaje.innerHTML = '<p class="error">Debes subir ambas imágenes.</p>';
+    return;
+  }
+
+  // Guardar datos
+  formData = {
+    email, password, name, userName, lastName, numMatricula, fechNa, numLicencia, number
+  };
+
+  showModal();
+});
 
   // ==================== PROCESO DE REGISTRO ====================
   confirmBtn.addEventListener('click', async () => {
@@ -418,12 +433,13 @@
 
       console.log('aaaaa', finalPayload)
 
-    const registerResponse = await fetch(REGISTER_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: finalPayload
-      });
+      const registerResponse = await fetch(REGISTER_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(finalPayload) // 👈 importante: convertir a JSON
+  });
 
+      console.log(registerResponse)
       if (!registerResponse.ok) {
         const errorData = await registerResponse.json();
         throw new Error(errorData.message || 'Error al registrar');
