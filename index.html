@@ -158,7 +158,7 @@
   // ==================== CONFIGURACIÓN ====================
   // CAMBIA ESTAS URLs POR TU BACKEND Y SUPABASE
   const BACKEND_URL = (window.env && window.env.PUBLIC_BACKEND_URL) || '';
-  const GET_S3_URLS = BACKEND_URL ? `${BACKEND_URL}/api/s3/upload-url` : '';
+  const GET_S3_URLS = BACKEND_URL ? `${BACKEND_URL}/api/s3/upload-url/register` : '';
   const REGISTER_URL = BACKEND_URL ? `${BACKEND_URL}/api/auth/register-driverform` : '';
   
   // Configuración de Supabase
@@ -404,17 +404,19 @@ form.addEventListener('submit', (e) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-             fileName: `ftUser/${name}_${lastName}-${numMatricula}.jpg`, fileType: dataUrl.file.type
+             fileName: `FOTOS_PERFIL/${name}_${lastName}-${numMatricula}.jpg`, 
+             fileType: dataUrl.file.type,
+             registrationType: 'driver'
             })
         });
       const s3Response2 = await fetch(GET_S3_URLS, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            //  fileName: `ftUser/${name}_${lastName}-${numMatricula}.jpg`, fileType: dataUrl.file.type
-            fileName: `LICENCIAS/${name}_${lastName}-${numMatricula}_${Date.now()}.jpg`, fileType: dataUrl2.file.type 
-            }
-            )
+            fileName: `LICENCIAS/${name}_${lastName}-${numMatricula}_${Date.now()}.jpg`, 
+            fileType: dataUrl2.file.type,
+            registrationType: 'driver'
+            })
         });
 
       console.log('s3', s3Response)
