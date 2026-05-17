@@ -164,7 +164,7 @@
   // Configuración de Supabase
   const SUPABASE_URL = (window.env && window.env.PUBLIC_SUPABASE_URL) || '';
   const SUPABASE_ANON_KEY = (window.env && window.env.PUBLIC_SUPABASE_ANON_KEY) || '';
-  const SUPABASE_TABLE = 'correosExternos'; // Nombre de tu tabla
+  const SUPABASE_TABLE = 'registro_conductores_pendientes'; // Tabla para verificar duplicados
   
   let supabaseClient = null;
   if (SUPABASE_URL && SUPABASE_ANON_KEY) {
@@ -257,23 +257,32 @@
       if (!supabaseClient) {
         throw new Error('Supabase no está configurado. Por favor, verifica las variables de entorno o tu archivo .env.');
       }
-     const {data: response, error } = await supabaseClient
+      
+      console.log(`Buscando usuario con email: ${email} en la tabla ${SUPABASE_TABLE}...`);
+      
+      const { data: response, error } = await supabaseClient
         .from(SUPABASE_TABLE)
         .select('*')
-        .or(`email.eq.${email}`);
-    console.log(response)
+        .eq('email', email);
+        
+      console.log('Respuesta de Supabase -> Data:', response, '| Error:', error);
 
-
-
-      if (!response[0] || error) {
-        throw new Error('Error al verificar en Supabase');
+      if (error) {
+        // Si hay un error de PostgREST (como 404 de tabla no encontrada)
+        console.error('Error detallado de Supabase:', error);
+        throw new Error(`Error en la consulta a Supabase: ${error.message} (Código: ${error.code})`);
       }
 
-      const data = await response[0];
-      console.log('data', data)
-      return data ? true : false; // True si existe
+      if (!response || response.length === 0) {
+        console.log('El usuario no fue encontrado en la base de datos.');
+        return false; // El usuario no existe en la base de datos
+      }
+
+      const data = response[0];
+      console.log('Usuario encontrado exitosamente:', data);
+      return true; // True si existe
     } catch (error) {
-      console.error('Error en Supabase:', error);
+      console.error('Error atrapado en checkUserInSupabase:', error);
       throw error;
     }
   }
@@ -380,14 +389,14 @@ form.addEventListener('submit', (e) => {
     resetSteps();
 
     try {
-      // PASO 1: Verificar en Supabase
+      // PASO 1: Verificar si ya existe en Supabase
       updateStep('step1', 'active');
       const existeEnSupabase = await checkUserInSupabase(formData.email);
       
       console.log('EXISTE', existeEnSupabase)
-      if (!existeEnSupabase) {
+      if (existeEnSupabase) {
         updateStep('step1', 'error');
-        mensaje.innerHTML = '<p class="error">❌ Usuario no autorizado. Debes estar registrado en Supabase primero.</p>';
+        mensaje.innerHTML = '<p class="error">❌ Ya existe una solicitud de registro pendiente para este correo electrónico.</p>';
         submitBtn.disabled = false;
         return;
       }
