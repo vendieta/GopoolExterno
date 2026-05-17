@@ -133,7 +133,7 @@
       </div>
       <div class="step" id="step5">
         <div class="step-icon"></div>
-        <span>Registrando en base de datos principal...</span>
+        <span>Enviando registro para aprobación...</span>
       </div>
     </div>
   </form>
@@ -152,19 +152,26 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="env.js"></script>
 
 <script>
   // ==================== CONFIGURACIÓN ====================
   // CAMBIA ESTAS URLs POR TU BACKEND Y SUPABASE
-  const BACKEND_URL = 'https://qb2dfea1va.execute-api.us-east-2.amazonaws.com/v1';
-  const GET_S3_URLS = `${BACKEND_URL}/api/s3/upload-url`;
-  const REGISTER_URL = `${BACKEND_URL}/api/auth/register-driverform`;
+  const BACKEND_URL = (window.env && window.env.PUBLIC_BACKEND_URL) || '';
+  const GET_S3_URLS = BACKEND_URL ? `${BACKEND_URL}/api/s3/upload-url` : '';
+  const REGISTER_URL = BACKEND_URL ? `${BACKEND_URL}/api/auth/register-driverform` : '';
   
   // Configuración de Supabase
-  const SUPABASE_URL = 'https://koizypxfowhfssjgpxyx.supabase.co'; // CAMBIA ESTO
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtvaXp5cHhmb3doZnNzamdweHl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI2OTc4OTUsImV4cCI6MjA3ODI3Mzg5NX0.iKK8VQ0Cxk1ALNf1cXQRVoxS476qCUv2F4AUgPP2w5s"
+  const SUPABASE_URL = (window.env && window.env.PUBLIC_SUPABASE_URL) || '';
+  const SUPABASE_ANON_KEY = (window.env && window.env.PUBLIC_SUPABASE_ANON_KEY) || '';
   const SUPABASE_TABLE = 'correosExternos'; // Nombre de tu tabla
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  
+  let supabaseClient = null;
+  if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  } else {
+    console.error("⚠️ Alerta: Supabase URL o Anon Key no detectados en window.env. Verifica tu archivo .env y la compilación de env.js.");
+  }
   // ==================== ELEMENTOS DOM ====================
   const form = document.getElementById('registroForm');
   const modal = document.getElementById('confirmModal');
@@ -247,6 +254,9 @@
   // ==================== SUPABASE ====================
   async function checkUserInSupabase(email) {
     try {
+      if (!supabaseClient) {
+        throw new Error('Supabase no está configurado. Por favor, verifica las variables de entorno o tu archivo .env.');
+      }
      const {data: response, error } = await supabaseClient
         .from(SUPABASE_TABLE)
         .select('*')
@@ -387,6 +397,9 @@ form.addEventListener('submit', (e) => {
 
       // PASO 2: Obtener URLs de S3
       updateStep('step2', 'active');
+      if (!GET_S3_URLS) {
+        throw new Error('La URL de la API del Backend (GET_S3_URLS) no está configurada. Por favor, verifica las variables de entorno.');
+      }
       const s3Response = await fetch(GET_S3_URLS, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -399,7 +412,7 @@ form.addEventListener('submit', (e) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             //  fileName: `ftUser/${name}_${lastName}-${numMatricula}.jpg`, fileType: dataUrl.file.type
-            fileName: `LICENCIAS/{name}_${lastName}-${numMatricula}_${Date.now()}.jpg`, fileType: dataUrl2.file.type 
+            fileName: `LICENCIAS/${name}_${lastName}-${numMatricula}_${Date.now()}.jpg`, fileType: dataUrl2.file.type 
             }
             )
         });
@@ -432,41 +445,34 @@ form.addEventListener('submit', (e) => {
       await uploadImageToS3(urls[1], dataUrl2.file, 'step4');
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // PASO 5: Registro en base de datos principal
+      // PASO 5: Registro temporal en Supabase (Pendiente de Aprobación)
       updateStep('step5', 'active');
-      const finalPayload = {
-        email: formData.email,
-        password: formData.password,
-        metadata: {
-          nombre: formData.name,
-          usuario: formData.userName,
-          lastname: formData.lastName,
-          nummatricula: formData.numMatricula,
-          fechanacimiento: formData.fechNa,
-          fotomatricula: publicUrls[0],
-          fotodriver: "null",
-          fotolicencia: publicUrls[1],
-          numeroLicencia: formData.numLicencia || null,
-          numeroTelefono: formData.number
-        }
-      };
+      
+      const { data, error: insertError } = await supabaseClient
+        .from('registro_conductores_pendientes')
+        .insert([
+          {
+            email: formData.email,
+            password: formData.password,
+            nombre: formData.name,
+            usuario: formData.userName,
+            apellido: formData.lastName,
+            num_matricula: formData.numMatricula,
+            fecha_nacimiento: formData.fechNa,
+            foto_matricula: publicUrls[0],
+            foto_licencia: publicUrls[1],
+            numero_licencia: formData.numLicencia || null,
+            numero_telefono: formData.number,
+            estado: 'pendiente'
+          }
+        ]);
 
-      console.log('aaaaa', finalPayload)
-
-      const registerResponse = await fetch(REGISTER_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(finalPayload) // 👈 importante: convertir a JSON
-  });
-
-      console.log(registerResponse)
-      if (!registerResponse.ok) {
-        const errorData = await registerResponse.json();
-        throw new Error(errorData.message || 'Error al registrar');
+      if (insertError) {
+        throw new Error(insertError.message || 'Error al guardar el registro en Supabase');
       }
 
       updateStep('step5', 'completed');
-      mensaje.innerHTML = '<p class="success">✅ ¡Registro exitoso! Usuario verificado y datos guardados.</p>';
+      mensaje.innerHTML = '<p class="success">✅ ¡Registro exitoso! Tus datos han sido enviados y están pendientes de aprobación.</p>';
       
       // Limpiar formulario
       form.reset();
